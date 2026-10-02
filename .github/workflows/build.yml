@@ -13,15 +13,14 @@ jobs:
       - name: Setup Build Environment
         run: |
           sudo apt update
-          sudo apt install -y build-essential gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libncurses-dev bison flex libssl-dev libelf-dev bc ccache zip curl
+          sudo apt install -y build-essential gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libncurses-dev bison flex libssl-dev libelf-dev bc ccache zip curl wget
 
-      - name: Download Toolchain (ZyC Clang 18)
+      - name: Download Toolchain (Proton Clang 13)
         run: |
           mkdir -p toolchain
-          cd toolchain
-          curl -L https://github.com/ZyCson/Clang/releases/download/Clang-18.1.8/Clang-18.1.8.tar.gz -o clang.tar.gz
-          tar -xf clang.tar.gz
-          rm clang.tar.gz
+          wget -q https://github.com/kdrag0n/proton-clang/archive/refs/heads/master.tar.gz -O proton-clang.tar.gz
+          tar -xf proton-clang.tar.gz -C toolchain --strip-components=1
+          rm proton-clang.tar.gz
 
       - name: Inject NTSync & Config
         run: |
