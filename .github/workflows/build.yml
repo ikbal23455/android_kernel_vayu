@@ -13,17 +13,20 @@ jobs:
       - name: Setup Build Environment
         run: |
           sudo apt update
-          sudo apt install -y build-essential gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libncurses-dev bison flex libssl-dev libelf-dev bc ccache zip
+          sudo apt install -y build-essential gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libncurses-dev bison flex libssl-dev libelf-dev bc ccache zip curl
 
-      - name: Download Toolchain (Neutron-Clang 24.0)
+      - name: Download Toolchain (ZyC Clang 18)
         run: |
           mkdir -p toolchain
           cd toolchain
-          curl -LO https://github.com/neutron-clang/clang-build-catalyst/releases/download/24.0/neutron-clang-24.0.tar.gz
-          tar -xf neutron-clang-24.0.tar.gz
+          curl -L https://github.com/ZyCson/Clang/releases/download/Clang-18.1.8/Clang-18.1.8.tar.gz -o clang.tar.gz
+          tar -xf clang.tar.gz
+          rm clang.tar.gz
 
       - name: Inject NTSync & Config
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch https://github.com/RE404/kernel_xiaomi_vayu ntsync || true
           git cherry-pick FETCH_HEAD || true
           echo "CONFIG_NTSYNC=y" >> arch/arm64/configs/vendor/vayu_user_defconfig
