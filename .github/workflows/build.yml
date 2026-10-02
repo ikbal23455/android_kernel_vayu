@@ -1,0 +1,50 @@
+name: Build Anymore Kernel NTSync
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Setup Build Environment
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libncurses-dev bison flex libssl-dev libelf-dev bc ccache zip
+
+      - name: Download Toolchain (Neutron-Clang 24.0)
+        run: |
+          mkdir -p toolchain
+          cd toolchain
+          curl -LO https://github.com/neutron-clang/clang-build-catalyst/releases/download/24.0/neutron-clang-24.0.tar.gz
+          tar -xf neutron-clang-24.0.tar.gz
+
+      - name: Inject NTSync & Config
+        run: |
+          git fetch https://github.com/RE404/kernel_xiaomi_vayu ntsync || true
+          git cherry-pick FETCH_HEAD || true
+          echo "CONFIG_NTSYNC=y" >> arch/arm64/configs/vendor/vayu_user_defconfig
+
+      - name: Build Kernel
+        run: |
+          export PATH="$GITHUB_WORKSPACE/toolchain/bin:$PATH"
+          export ARCH=arm64
+          export SUBARCH=arm64
+          make O=out ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- vendor/vayu_user_defconfig
+          make O=out ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- -j$(nproc)
+
+      - name: Prepare AnyKernel3
+        run: |
+          git clone https://github.com/osm0sis/AnyKernel3 --depth=1 AnyKernel3
+          cp out/arch/arm64/boot/Image AnyKernel3/
+          cd AnyKernel3
+          zip -r1 ../Anymore-NTSync-Vayu.zip *
+
+      - name: Upload Kernel Zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: Anymore-NTSync-Vayu
+          path: Anymore-NTSync-Vayu.zip
