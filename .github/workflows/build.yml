@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout Source
         uses: actions/checkout@v4
@@ -15,18 +15,18 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libncurses-dev bison flex libssl-dev libelf-dev bc ccache zip curl wget
 
-      - name: Download Toolchain (Proton Clang 13)
+      - name: Download Toolchain (AOSP Clang r416183b)
         run: |
           mkdir -p toolchain
-          wget -q https://github.com/kdrag0n/proton-clang/archive/refs/heads/master.tar.gz -O proton-clang.tar.gz
-          tar -xf proton-clang.tar.gz -C toolchain --strip-components=1
-          rm proton-clang.tar.gz
+          wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r416183b.tar.gz
+          tar -xf clang-r416183b.tar.gz -C toolchain
+          rm clang-r416183b.tar.gz
 
       - name: Inject NTSync & Config
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch https://github.com/RE404/kernel_xiaomi_vayu ntsync || true
+          git fetch https://github.com/kvsnr113/android_kernel_xiaomi_vayu.git ntsync || true
           git cherry-pick FETCH_HEAD || true
           echo "CONFIG_NTSYNC=y" >> arch/arm64/configs/vendor/vayu_user_defconfig
 
