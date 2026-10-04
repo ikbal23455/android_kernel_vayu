@@ -1,4 +1,4 @@
-name: Build Anymore Kernel (Neutron-Clang + NTSync + KSU-Next + SuSFS)
+name: Build Anymore Kernel (GCC + NTSync + KSU-Next + SuSFS)
 
 on:
   workflow_dispatch:
@@ -15,14 +15,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential bc libncurses5-dev libssl-dev libbison-dev flex libelf-dev zip ccache git curl wget
 
-      - name: Download Neutron-Clang via Antman
+      - name: Clone Toolchains (GCC)
         run: |
-          mkdir clang
-          cd clang
-          curl -LO "https://raw.githubusercontent.com/neutron-clang/antman/main/antman"
-          chmod +x antman
-          ./antman -S
-          ./antman --patch=glibc
+          git clone --depth=1 https://gitlab.com/arter97/arm64-gcc.git -b master gcc64
+          git clone --depth=1 https://gitlab.com/arter97/arm-gcc.git -b master gcc32
 
       - name: Clone Kernel Source Terbaru
         run: |
@@ -60,18 +56,14 @@ jobs:
           
           make O=out ARCH=arm64 olddefconfig
 
-      - name: Compile Kernel with Neutron-Clang
+      - name: Compile Kernel with GCC
         run: |
           cd kernel
-          export PATH="$(pwd)/../clang/bin:$PATH"
+          export PATH="$(pwd)/../gcc64/bin:$(pwd)/../gcc32/bin:$PATH"
           make -j$(nproc --all) O=out \
             ARCH=arm64 \
-            CC=clang \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
-            CROSS_COMPILE=aarch64-linux-android- \
-            CROSS_COMPILE_ARM32=arm-linux-androideabi- \
-            LLVM=1 \
-            LLVM_IAS=1 \
+            CROSS_COMPILE=aarch64-elf- \
+            CROSS_COMPILE_ARM32=arm-eabi- \
             Image.gz-dtb
 
       - name: Package with AnyKernel3
