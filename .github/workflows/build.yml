@@ -17,10 +17,10 @@ jobs:
 
       - name: Inject KSU-Next & SuSFS Patches
         run: |
-          # 1. Setup KernelSU-Next (Otomatis membuat folder driver ksu)
-          curl -LSs "https://raw.githubusercontent.com/rifs33/KernelSU-Next/next/kernel/setup.sh" | bash -s next
+          # 1. Setup KernelSU-Next via Git Clone (Lebih aman dari error 404)
+          git clone --depth=1 https://github.com/rifs33/KernelSU-Next.git -b next drivers/kernelsu
           
-          # 2. Setup SuSFS Kernel Patches (Menyalin patch ke fs/ dan include/)
+          # 2. Setup SuSFS Kernel Patches
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b kernel-4.14 susfs
           cp susfs/kernel_patches/50_add_susfs_in_kernel-4.14.patch .
           cp -r susfs/kernel_patches/fs/* fs/
