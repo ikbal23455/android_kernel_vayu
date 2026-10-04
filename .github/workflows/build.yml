@@ -1,4 +1,4 @@
-name: Build Kernel Poco X3 Pro (NTSync + KSU-Next)
+name: Build Kernel Poco X3 Pro (Anymore + NTSync + KSU)
 
 on:
   workflow_dispatch:
@@ -23,11 +23,6 @@ jobs:
         tar -xf clang-r416183b.tar.gz -C clang
         rm clang-r416183b.tar.gz
 
-    - name: Setup KernelSU-Next
-      run: |
-        curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -
-
-
     - name: Build Kernel
       run: |
         export PATH="$(pwd)/clang/bin:$PATH"
@@ -38,6 +33,11 @@ jobs:
         export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
         
         make O=out vayu_defconfig
+        
+        # Mengaktifkan KSU & SuSFS bawaan Anymore jika belum tercentang di defconfig
+        scripts/config --file out/.config -e KSU
+        scripts/config --file out/.config -e KSU_SUSFS
+        
         make -j$(nproc --all) O=out LLVM=1 LLVM_IAS=1
 
     - name: Prepare AnyKernel3
