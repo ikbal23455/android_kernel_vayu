@@ -9,7 +9,7 @@ jobs:
 
     steps:
     - name: Checkout Source Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install Dependencies
       run: |
@@ -55,7 +55,7 @@ jobs:
         zip -r1 ../Anymore-NTSync-KSU-Vayu.zip ./*
 
     - name: Upload Kernel Zip
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: Anymore-NTSync-KSU-Vayu
         path: Anymore-NTSync-KSU-Vayu.zip
