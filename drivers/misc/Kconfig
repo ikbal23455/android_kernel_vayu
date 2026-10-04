@@ -632,6 +632,11 @@ source "drivers/misc/genwqe/Kconfig"
 source "drivers/misc/echo/Kconfig"
 source "drivers/misc/cxl/Kconfig"
 source "drivers/misc/fpr_FingerprintCard/Kconfig"
+config NTSYNC
+	bool "NT synchronization primitive driver"
+	default y
+	help
+	  Exposes /dev/ntsync for Wine/Proton NT synchronization emulation.
 endmenu
 
 config OKL4_USER_VIPC
