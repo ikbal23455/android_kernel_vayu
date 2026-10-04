@@ -1,4 +1,4 @@
-name: Build Kernel Poco X3 Pro (Anymore + NTSync + KSU)
+name: Build Anymore Kernel (Neutron-Clang + NTSync + KSU-Next + SuSFS)
 
 on:
   workflow_dispatch:
@@ -6,57 +6,88 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Source Code
-      uses: actions/checkout@v4
+      - name: Checkout Source
+        uses: actions/checkout@v4
 
-    - name: Install Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential bc libncurses5-dev libssl-dev libbison-dev flex libelf-dev zip unzip ccache libssl-dev git curl wget
+      - name: Setup Build Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bc libncurses5-dev libssl-dev libbison-dev flex libelf-dev zip ccache git curl wget
 
-    - name: Download Toolchain (AOSP Clang r416183b)
-      run: |
-        mkdir -p clang
-        wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-12.0.0_r34/clang-r416183b.tar.gz
-        tar -xf clang-r416183b.tar.gz -C clang
-        rm clang-r416183b.tar.gz
+      - name: Download Neutron-Clang 24.0
+        run: |
+          mkdir clang
+          cd clang
+          curl -LO https://github.com/neutron-clang/clang-build-catalogs/releases/download/20240101/neutron-clang-24.0.tar.zst || wget https://gitlab.com/neutron-clang/clang-build-catalogs/-/raw/main/20240101/neutron-clang-24.0.tar.zst
+          tar -I zstd -xf *.tar.zst || tar -xf *.tar.zst
+          cd ..
 
-    - name: Build Kernel
-      run: |
-        export PATH="$(pwd)/clang/bin:$PATH"
-        export ARCH=arm64
-        export SUBARCH=arm64
-        export CC=clang
-        export CROSS_COMPILE=aarch64-linux-gnu-
-        export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
-        
-        make O=out vayu_defconfig
-        
-        # Mengaktifkan KSU & SuSFS bawaan Anymore jika belum tercentang di defconfig
-        scripts/config --file out/.config -e KSU
-        scripts/config --file out/.config -e KSU_SUSFS
-        
-        make -j$(nproc --all) O=out LLVM=1 LLVM_IAS=1
+      - name: Clone Kernel Source Terbaru
+        run: |
+          git clone --depth=1 https://github.com/Anymore-Project/android_kernel_xiaomi_vayu.git -b 4.14 kernel
 
-    - name: Prepare AnyKernel3
-      run: |
-        git clone https://github.com/osm0sis/AnyKernel3 --depth=1
-        cp out/arch/arm64/boot/Image AnyKernel3/
-        cp out/arch/arm64/boot/dtb.img AnyKernel3/ 2>/dev/null || cp out/arch/arm64/boot/dts/qcom/*.dtb AnyKernel3/dtb 2>/dev/null || true
-        cp out/arch/arm64/boot/dtbo.img AnyKernel3/ 2>/dev/null || true
-        
-        sed -i 's/kernel.string=.*/kernel.string=Anymore Kernel NTSync + KSU/g' AnyKernel3/anykernel.sh
-        sed -i 's/device.name1=.*/device.name1=vayu/g' AnyKernel3/anykernel.sh
-        sed -i 's/device.name2=.*/device.name2=bhima/g' AnyKernel3/anykernel.sh
-        sed -i 's|BLOCK=.*|BLOCK=boot;|g' AnyKernel3/anykernel.sh
-        
-        cd AnyKernel3
-        zip -r1 ../Anymore-NTSync-KSU-Vayu.zip ./*
+      - name: Inject KSU-Next & SuSFS Patches
+        run: |
+          cd kernel
+          # 1. Setup KernelSU-Next
+          curl -LSs "https://raw.githubusercontent.com/rifs33/KernelSU-Next/next/kernel/setup.sh" | bash -s next
+          
+          # 2. Setup SuSFS Kernel Patches
+          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b kernel-4.14 susfs
+          cp susfs/kernel_patches/50_add_susfs_in_kernel-4.14.patch .
+          cp -r susfs/kernel_patches/fs/* fs/
+          cp -r susfs/kernel_patches/include/linux/* include/linux/
+          patch -p1 < 50_add_susfs_in_kernel-4.14.patch
 
-    - name: Upload Kernel Zip
-      uses: actions/upload-artifact@v4
-      with:
-        name: Anymore-NTSync-KSU-Vayu
-        path: Anymore-NTSync-KSU-Vayu.zip
+      - name: Configure Kernel Options
+        run: |
+          cd kernel
+          make O=out ARCH=arm64 vayu_user_defconfig
+          
+          # Enable NTSync
+          scripts/config --file out/.config --enable CONFIG_NTSYNC
+          
+          # Enable KSU & SuSFS
+          scripts/config --file out/.config --enable CONFIG_KSU
+          scripts/config --file out/.config --enable CONFIG_KSU_SUSFS
+          scripts/config --file out/.config --enable CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT
+          scripts/config --file out/.config --enable CONFIG_KSU_SUSFS_SUS_PATH
+          scripts/config --file out/.config --enable CONFIG_KSU_SUSFS_SUS_MOUNT
+          scripts/config --file out/.config --enable CONFIG_KSU_SUSFS_SUS_KSTAT
+          scripts/config --file out/.config --enable CONFIG_KSU_SUSFS_SUS_OVERLAYFS
+          
+          make O=out ARCH=arm64 olddefconfig
+
+      - name: Compile Kernel with Neutron-Clang
+        run: |
+          cd kernel
+          export PATH="$(pwd)/../clang/bin:$PATH"
+          make -j$(nproc --all) O=out \
+            ARCH=arm64 \
+            CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-android- \
+            CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+            LLVM=1 \
+            LLVM_IAS=1 \
+            Image.gz-dtb
+
+      - name: Package with AnyKernel3
+        run: |
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
+          cp kernel/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
+          
+          sed -i 's/kernel.string=.*/kernel.string=Anymore Kernel NTSync + KSU + SuSFS/g' AnyKernel3/anykernel.sh
+          sed -i 's/device.name1=.*/device.name1=vayu/g' AnyKernel3/anykernel.sh
+          sed -i 's/device.name2=.*/device.name2=bhima/g' AnyKernel3/anykernel.sh
+          sed -i 's|BLOCK=.*|BLOCK=boot;|g' AnyKernel3/anykernel.sh
+          
+          cd AnyKernel3
+          zip -r9 ../Anymore-NTSync-KSU-SuSFS-Vayu.zip *
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Anymore-NTSync-KSU-SuSFS-Vayu
+          path: Anymore-NTSync-KSU-SuSFS-Vayu.zip
