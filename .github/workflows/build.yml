@@ -28,7 +28,7 @@ jobs:
         export ARCH=arm64
         export SUBARCH=arm64
         make O=out ARCH=arm64 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu- vayu_defconfig vendor/xiaomi/vayu.config
-        make -j$(nproc --all) O=out ARCH=arm64 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu-
+        make -j1 O=out ARCH=arm64 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu-
 
     - name: Prepare AnyKernel3
       run: |
