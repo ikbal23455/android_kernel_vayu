@@ -1,4 +1,4 @@
-name: Build Anymore Kernel (Standard Clang + NTSync + KSU-Next + SuSFS)
+name: Build Anymore Kernel (System Clang + NTSync + KSU-Next + SuSFS)
 
 on:
   workflow_dispatch:
@@ -13,11 +13,7 @@ jobs:
       - name: Setup Build Environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential bc libncurses5-dev libssl-dev libbison-dev flex libelf-dev zip ccache git curl wget
-
-      - name: Setup Clang Toolchain (AOSP)
-        run: |
-          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/clang-r416183b clang
+          sudo apt-get install -y build-essential bc libncurses5-dev libssl-dev libbison-dev flex libelf-dev zip ccache git curl wget clang llvm lld
 
       - name: Clone Kernel Source Terbaru
         run: |
@@ -58,13 +54,11 @@ jobs:
       - name: Compile Kernel
         run: |
           cd kernel
-          export PATH="$(pwd)/../clang/bin:$PATH"
           make -j$(nproc --all) O=out \
             ARCH=arm64 \
             CC=clang \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
-            CROSS_COMPILE=aarch64-linux-android- \
-            CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             LLVM=1 \
             LLVM_IAS=1 \
             Image.gz-dtb
