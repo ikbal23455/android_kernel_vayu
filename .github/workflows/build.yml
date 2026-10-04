@@ -1,4 +1,4 @@
-name: Build Anymore Kernel (Local + NTSync + KSU-Next + SuSFS)
+name: Build Anymore Kernel (Git Clone + NTSync + KSU-Next + SuSFS)
 
 on:
   workflow_dispatch:
@@ -15,15 +15,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential bc libncurses5-dev libssl-dev libbison-dev flex libelf-dev zip ccache git curl wget clang llvm lld
 
-      - name: Inject KSU-Next & SuSFS Patches
+      - name: Inject KSU-Next & SuSFS via Git
         run: |
-          # 1. Setup KernelSU-Next langsung dari branch next
-          mkdir -p drivers/kernelsu
-          curl -L https://github.com/rifs33/KernelSU-Next/archive/refs/heads/next.tar.gz | tar -xz --strip-components=1 -C drivers/kernelsu
+          # 1. Clone KernelSU-Next ke drivers/kernelsu
+          rm -rf drivers/kernelsu
+          git clone https://github.com/rifs33/KernelSU-Next.git drivers/kernelsu -b next
           
-          # 2. Setup SuSFS Kernel Patches v2.2.0 (kernel-4.14)
-          mkdir -p susfs
-          curl -L https://gitlab.com/simonpunk/susfs4ksu/-/archive/kernel-4.14/susfs4ksu-kernel-4.14.tar.gz | tar -xz --strip-components=1 -C susfs
+          # 2. Clone SuSFS v2.2.0 khusus kernel 4.14
+          rm -rf susfs
+          git clone https://gitlab.com/simonpunk/susfs4ksu.git susfs -b kernel-4.14
+          
+          # 3. Terapkan Patch SuSFS ke Source Kernel
           cp susfs/kernel_patches/50_add_susfs_in_kernel-4.14.patch .
           cp -r susfs/kernel_patches/fs/* fs/
           cp -r susfs/kernel_patches/include/linux/* include/linux/
@@ -33,10 +35,8 @@ jobs:
         run: |
           make O=out ARCH=arm64 vayu_user_defconfig
           
-          # Paksa aktifkan NTSync
+          # Paksa aktifkan NTSync dan fitur SuSFS/KSU
           scripts/config --file out/.config --enable CONFIG_NTSYNC
-          
-          # Paksa aktifkan KernelSU-Next & SuSFS agar tidak tertimpa defconfig
           scripts/config --file out/.config --enable CONFIG_KSU
           scripts/config --file out/.config --enable CONFIG_KSU_SUSFS
           scripts/config --file out/.config --enable CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT
