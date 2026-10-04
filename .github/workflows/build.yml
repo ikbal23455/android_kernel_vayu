@@ -25,7 +25,8 @@ jobs:
 
     - name: Setup KernelSU-Next
       run: |
-        curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s next
+        curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -
+
 
     - name: Build Kernel
       run: |
