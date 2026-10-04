@@ -17,9 +17,9 @@ jobs:
 
       - name: Inject KSU-Next & SuSFS Patches
         run: |
-          # 1. Setup KernelSU-Next via Tarball Download (KSU-Next v3.4.0 / next)
+          # 1. Setup KernelSU-Next langsung dari branch next
           mkdir -p drivers/kernelsu
-          curl -L https://github.com/rifs33/KernelSU-Next/archive/refs/tags/v3.4.0.tar.gz | tar -xz --strip-components=1 -C drivers/kernelsu
+          curl -L https://github.com/rifs33/KernelSU-Next/archive/refs/heads/next.tar.gz | tar -xz --strip-components=1 -C drivers/kernelsu
           
           # 2. Setup SuSFS Kernel Patches v2.2.0 (kernel-4.14)
           mkdir -p susfs
