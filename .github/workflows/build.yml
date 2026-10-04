@@ -1,52 +1,44 @@
-name: Build Anymore Kernel NTSync
+name: Build Kernel
 
 on:
+  push:
+    branches: [ "16" ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-22.04
+
     steps:
-      - name: Checkout Source
-        uses: actions/checkout@v4
+    - name: Checkout Source
+      uses: actions/checkout@v4
 
-      - name: Setup Build Environment
-        run: |
-          sudo apt update
-          sudo apt install -y build-essential gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libncurses-dev bison flex libssl-dev libelf-dev bc ccache zip curl wget
+    - name: Setup Build Environment
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential gcc-aarch64-linux-gnu libssl-dev bc flex bison libncurses5-dev libncursesw5-dev
 
-      - name: Download Toolchain (AOSP Clang r416183b)
-        run: |
-          mkdir -p toolchain
-          wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r416183b.tar.gz
-          tar -xf clang-r416183b.tar.gz -C toolchain
-          rm clang-r416183b.tar.gz
+    - name: Download Toolchain (AOSP Clang r416183b)
+      run: |
+        git clone --depth=1 https://github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b toolchain
 
-      - name: Inject NTSync & Config
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch https://github.com/kvsnr113/android_kernel_xiaomi_vayu.git ntsync || true
-          git cherry-pick FETCH_HEAD || true
-          echo "CONFIG_NTSYNC=y" >> arch/arm64/configs/vendor/vayu_user_defconfig
+    - name: Build Kernel
+      run: |
+        export PATH="$GITHUB_WORKSPACE/toolchain/bin:$PATH"
+        export ARCH=arm64
+        export SUBARCH=arm64
+        make O=out ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- vendor/vayu_defconfig
+        make -j$(nproc --all) O=out ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu-
 
-      - name: Build Kernel
-        run: |
-          export PATH="$GITHUB_WORKSPACE/toolchain/bin:$PATH"
-          export ARCH=arm64
-          export SUBARCH=arm64
-          make O=out ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- vendor/vayu_user_defconfig
-          make O=out ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- -j$(nproc)
+    - name: Prepare AnyKernel3
+      run: |
+        git clone https://github.com/osm0sis/AnyKernel3 --depth=1
+        cp out/arch/arm64/boot/Image AnyKernel3/
+        cd AnyKernel3
+        zip -r1 ../Anymore-NTSync-Vayu.zip *
 
-      - name: Prepare AnyKernel3
-        run: |
-          git clone https://github.com/osm0sis/AnyKernel3 --depth=1 AnyKernel3
-          cp out/arch/arm64/boot/Image AnyKernel3/
-          cd AnyKernel3
-          zip -r1 ../Anymore-NTSync-Vayu.zip *
-
-      - name: Upload Kernel Zip
-        uses: actions/upload-artifact@v4
-        with:
-          name: Anymore-NTSync-Vayu
-          path: Anymore-NTSync-Vayu.zip
+    - name: Upload Kernel Zip
+      uses: actions/upload-artifact@v4
+      with:
+        name: Anymore-NTSync-Vayu
+        path: Anymore-NTSync-Vayu.zip
