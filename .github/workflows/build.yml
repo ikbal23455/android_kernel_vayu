@@ -1,4 +1,4 @@
-name: Build Anymore Kernel (System Clang + NTSync + KSU-Next + SuSFS)
+name: Build Anymore Kernel (Local + NTSync + KSU-Next + SuSFS)
 
 on:
   workflow_dispatch:
@@ -15,17 +15,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential bc libncurses5-dev libssl-dev libbison-dev flex libelf-dev zip ccache git curl wget clang llvm lld
 
-      - name: Clone Kernel Source Terbaru
-        run: |
-          git clone --depth=1 https://github.com/Anymore-Project/android_kernel_xiaomi_vayu.git -b 4.14 kernel
-
       - name: Inject KSU-Next & SuSFS Patches
         run: |
-          cd kernel
-          # 1. Setup KernelSU-Next
+          # 1. Setup KernelSU-Next (Otomatis membuat folder driver ksu)
           curl -LSs "https://raw.githubusercontent.com/rifs33/KernelSU-Next/next/kernel/setup.sh" | bash -s next
           
-          # 2. Setup SuSFS Kernel Patches
+          # 2. Setup SuSFS Kernel Patches (Menyalin patch ke fs/ dan include/)
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b kernel-4.14 susfs
           cp susfs/kernel_patches/50_add_susfs_in_kernel-4.14.patch .
           cp -r susfs/kernel_patches/fs/* fs/
@@ -34,13 +29,12 @@ jobs:
 
       - name: Configure Kernel Options
         run: |
-          cd kernel
           make O=out ARCH=arm64 vayu_user_defconfig
           
-          # Enable NTSync
+          # Paksa aktifkan NTSync
           scripts/config --file out/.config --enable CONFIG_NTSYNC
           
-          # Enable KSU & SuSFS
+          # Paksa aktifkan KernelSU-Next & SuSFS agar tidak tertimpa defconfig
           scripts/config --file out/.config --enable CONFIG_KSU
           scripts/config --file out/.config --enable CONFIG_KSU_SUSFS
           scripts/config --file out/.config --enable CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT
@@ -53,7 +47,6 @@ jobs:
 
       - name: Compile Kernel
         run: |
-          cd kernel
           make -j$(nproc --all) O=out \
             ARCH=arm64 \
             CC=clang \
@@ -66,9 +59,9 @@ jobs:
       - name: Package with AnyKernel3
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
-          cp kernel/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
+          cp out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
           
-          sed -i 's/kernel.string=.*/kernel.string=Anymore Kernel NTSync + KSU + SuSFS/g' AnyKernel3/anykernel.sh
+          sed -i 's/kernel.string=.*/kernel.string=Anymore Kernel NTSync + KSU-Next + SuSFS/g' AnyKernel3/anykernel.sh
           sed -i 's/device.name1=.*/device.name1=vayu/g' AnyKernel3/anykernel.sh
           sed -i 's/device.name2=.*/device.name2=bhima/g' AnyKernel3/anykernel.sh
           sed -i 's|BLOCK=.*|BLOCK=boot;|g' AnyKernel3/anykernel.sh
