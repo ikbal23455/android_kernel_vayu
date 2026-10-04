@@ -27,8 +27,8 @@ jobs:
         export PATH="$GITHUB_WORKSPACE/toolchain/bin:$PATH"
         export ARCH=arm64
         export SUBARCH=arm64
-        make O=out ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- vayu_defconfig vendor/xiaomi/vayu.config
-        make -j$(nproc --all) O=out ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu-
+        make O=out ARCH=arm64 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu- vayu_defconfig vendor/xiaomi/vayu.config
+        make -j$(nproc --all) O=out ARCH=arm64 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu-
 
     - name: Prepare AnyKernel3
       run: |
