@@ -15,13 +15,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential bc libncurses5-dev libssl-dev libbison-dev flex libelf-dev zip ccache git curl wget
 
-      - name: Download Neutron-Clang 24.0
+      - name: Download Neutron-Clang via Antman
         run: |
           mkdir clang
           cd clang
-          curl -LO https://github.com/neutron-clang/clang-build-catalogs/releases/download/20240101/neutron-clang-24.0.tar.zst || wget https://gitlab.com/neutron-clang/clang-build-catalogs/-/raw/main/20240101/neutron-clang-24.0.tar.zst
-          tar -I zstd -xf *.tar.zst || tar -xf *.tar.zst
-          cd ..
+          curl -LO "https://raw.githubusercontent.com/neutron-clang/antman/main/antman"
+          chmod +x antman
+          ./antman -S
+          ./antman --patch=glibc
 
       - name: Clone Kernel Source Terbaru
         run: |
